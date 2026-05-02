@@ -20,11 +20,11 @@ Altera or its authorized distributors.  Please refer to the
 applicable agreement for further details.
 */
 
-VECTOR("C:/Users/wandr/OneDrive/Documentos/reconfiguraveis/ALU/ulaSimulacao.vwf")
+VECTOR("C:/Users/wandr/OneDrive/Documentos/reconfiguraveis/ALU/db/MICROP.sim.cvwf")
 {
 	ZOOM{
 		ZBEGIN = 0;
-		ZEND = 68550;
+		ZEND = 75650;
 		NUMERATOR = 20;
 		DENOMINATOR = 1000;
 		TOP_INDEX = 0;
@@ -351,13 +351,13 @@ VECTOR("C:/Users/wandr/OneDrive/Documentos/reconfiguraveis/ALU/ulaSimulacao.vwf"
 	}
 }
 
-VECTOR("C:/Users/wandr/OneDrive/Documentos/reconfiguraveis/ALU/db/MICROP.sim.cvwf")
+VECTOR("C:/Users/wandr/OneDrive/Documentos/reconfiguraveis/ALU/ulaSimulacao.vwf")
 {
 	ZOOM{
 		ZBEGIN = 0;
-		ZEND = 75650;
-		NUMERATOR = 20;
-		DENOMINATOR = 1000;
+		ZEND = 82688;
+		NUMERATOR = 1654;
+		DENOMINATOR = 82688;
 		TOP_INDEX = 0;
 	}
 	CLOCK{
