@@ -1,0 +1,139 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity alu is
+    port (
+        a_in      : in  std_logic_vector(7 downto 0);
+        b_in      : in  std_logic_vector(7 downto 0);
+        c_in      : in  std_logic;
+        op_sel    : in  std_logic_vector(3 downto 0);
+        r_out     : out std_logic_vector(7 downto 0);
+        flags_out : out std_logic_vector(4 downto 0)
+    );
+end alu;
+
+architecture behavior of alu is
+begin
+    process(a_in, b_in, c_in, op_sel)
+        variable temp : unsigned(8 downto 0);
+        variable res  : unsigned(7 downto 0);
+    begin
+
+        case op_sel is
+
+            -- =====================
+            -- ARITMÉTICAS
+            -- =====================
+
+            when "0000" => -- ADD
+                temp := ('0' & unsigned(a_in)) + ('0' & unsigned(b_in));
+                res  := temp(7 downto 0);
+                flags_out(0) <= temp(8);
+
+            when "0001" => -- ADDC
+                temp := ('0' & unsigned(a_in)) + ('0' & unsigned(b_in));
+                if c_in = '1' then
+                    temp := temp + 1;
+                end if;
+                res  := temp(7 downto 0);
+                flags_out(0) <= temp(8);
+
+            when "0010" => -- SUB
+                temp := ('0' & unsigned(a_in)) - ('0' & unsigned(b_in));
+                res  := temp(7 downto 0);
+                flags_out(0) <= temp(8);
+
+            when "0011" => -- SUBC
+                temp := ('0' & unsigned(a_in)) - ('0' & unsigned(b_in));
+                if c_in = '1' then
+                    temp := temp - 1;
+                end if;
+                res  := temp(7 downto 0);
+                flags_out(0) <= temp(8);
+
+            -- =====================
+            -- LÓGICAS
+            -- =====================
+
+            when "0100" => -- AND
+                res := unsigned(a_in and b_in);
+                flags_out(0) <= '0';
+
+            when "0101" => -- OR
+                res := unsigned(a_in or b_in);
+                flags_out(0) <= '0';
+
+            when "0110" => -- XOR
+                res := unsigned(a_in xor b_in);
+                flags_out(0) <= '0';
+
+            when "0111" => -- PASS B
+                res := unsigned(b_in);
+                flags_out(0) <= '0';
+
+            -- =====================
+            -- SHIFT / ROTATE
+            -- =====================
+
+            when "1000" => -- RLC
+                res := unsigned(a_in(6 downto 0) & c_in);
+                flags_out(0) <= a_in(7);
+
+            when "1001" => -- RRC
+                res := unsigned(c_in & a_in(7 downto 1));
+                flags_out(0) <= a_in(0);
+
+            when "1010" => -- RL
+                res := unsigned(a_in(6 downto 0) & a_in(7));
+                flags_out(0) <= a_in(7);
+
+            when "1011" => -- RR
+                res := unsigned(a_in(0) & a_in(7 downto 1));
+                flags_out(0) <= a_in(0);
+
+            when "1100" => -- SLL
+                res := unsigned(a_in(6 downto 0) & '0');
+                flags_out(0) <= a_in(7);
+
+            when "1101" => -- SRL
+                res := unsigned('0' & a_in(7 downto 1));
+                flags_out(0) <= a_in(0);
+
+            when "1110" => -- SRA
+                res := unsigned(a_in(7) & a_in(7 downto 1));
+                flags_out(0) <= a_in(0);
+
+            -- =====================
+            -- OUTROS
+            -- =====================
+
+            when "1111" => -- NOT
+                res := unsigned(not a_in);
+                flags_out(0) <= '0';
+
+            when others =>
+                res := (others => '0');
+                flags_out(0) <= '0';
+
+        end case;
+
+        -- RESULTADO
+        r_out <= std_logic_vector(res);
+
+        -- FLAGS
+
+        flags_out(4) <= res(7); -- Negativo
+
+        if res = 0 then
+            flags_out(2) <= '1'; -- Zero
+        else
+            flags_out(2) <= '0';
+        end if;
+
+        flags_out(3) <= '0'; -- Overflow (simplificado)
+        flags_out(1) <= '0'; -- Half carry
+
+    end process;
+
+end behavior;
