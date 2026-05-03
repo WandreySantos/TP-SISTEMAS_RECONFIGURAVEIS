@@ -9,131 +9,121 @@ entity alu is
         c_in      : in  std_logic;
         op_sel    : in  std_logic_vector(3 downto 0);
         r_out     : out std_logic_vector(7 downto 0);
-        flags_out : out std_logic_vector(4 downto 0)
+        flags_out : out std_logic_vector(4 downto 0) -- [N, V, Z, H, C]
     );
 end alu;
 
 architecture behavior of alu is
+    -- Sinais intermediários para cálculos
+    signal res_extended : unsigned(8 downto 0);
+    signal h_arith      : unsigned(4 downto 0);
+    signal res_final    : std_logic_vector(7 downto 0);
+    signal carry_in_ext : unsigned(8 downto 0);
 begin
-    process(a_in, b_in, c_in, op_sel)
-        variable temp : unsigned(8 downto 0);
-        variable res  : unsigned(7 downto 0);
+
+    -- Extensão do carry de entrada
+    carry_in_ext <= "00000000" & c_in;
+
+    -- Processo Principal da ULA
+    process(a_in, b_in, c_in, op_sel, res_extended, h_arith, res_final, carry_in_ext)
+        variable v_res_final : std_logic_vector(7 downto 0);
+        variable v_flags     : std_logic_vector(4 downto 0);
     begin
+        -- Valores padrão (Reset de variáveis)
+        v_res_final := (others => '0');
+        v_flags     := (others => '0');
+        res_extended <= (others => '0');
+        h_arith      <= (others => '0');
 
         case op_sel is
-
-            -- =====================
-            -- ARITMÉTICAS
-            -- =====================
-
+            -- ============================================================
+            -- OPERAÇÕES ARITMÉTICAS
+            -- ============================================================
             when "0000" => -- ADD
-                temp := ('0' & unsigned(a_in)) + ('0' & unsigned(b_in));
-                res  := temp(7 downto 0);
-                flags_out(0) <= temp(8);
+                res_extended <= unsigned('0' & a_in) + unsigned('0' & b_in);
+                h_arith      <= unsigned('0' & a_in(3 downto 0)) + unsigned('0' & b_in(3 downto 0));
+                v_res_final  := std_logic_vector(res_extended(7 downto 0));
+                v_flags(0)   := res_extended(8); -- Carry
+                v_flags(1)   := h_arith(4);      -- Half-Carry
+                -- Overflow (V)
+                v_flags(3)   := (a_in(7) and b_in(7) and (not v_res_final(7))) or 
+                                ((not a_in(7)) and (not b_in(7)) and v_res_final(7));
 
-            when "0001" => -- ADDC
-                temp := ('0' & unsigned(a_in)) + ('0' & unsigned(b_in));
-                if c_in = '1' then
-                    temp := temp + 1;
-                end if;
-                res  := temp(7 downto 0);
-                flags_out(0) <= temp(8);
+            when "0001" => -- ADDC (Add with Carry)
+                res_extended <= unsigned('0' & a_in) + unsigned('0' & b_in) + carry_in_ext;
+                h_arith      <= unsigned('0' & a_in(3 downto 0)) + unsigned('0' & b_in(3 downto 0)) + carry_in_ext(4 downto 0);
+                v_res_final  := std_logic_vector(res_extended(7 downto 0));
+                v_flags(0)   := res_extended(8);
+                v_flags(1)   := h_arith(4);
+                v_flags(3)   := (a_in(7) and b_in(7) and (not v_res_final(7))) or 
+                                ((not a_in(7)) and (not b_in(7)) and v_res_final(7));
 
             when "0010" => -- SUB
-                temp := ('0' & unsigned(a_in)) - ('0' & unsigned(b_in));
-                res  := temp(7 downto 0);
-                flags_out(0) <= temp(8);
+                res_extended <= unsigned('0' & a_in) - unsigned('0' & b_in);
+                h_arith      <= unsigned('0' & a_in(3 downto 0)) - unsigned('0' & b_in(3 downto 0));
+                v_res_final  := std_logic_vector(res_extended(7 downto 0));
+                v_flags(0)   := res_extended(8); -- Borrow (C)
+                v_flags(1)   := h_arith(4);      -- Half-Borrow (H)
+                -- Overflow (V)
+                v_flags(3)   := (a_in(7) and (not b_in(7)) and (not v_res_final(7))) or 
+                                ((not a_in(7)) and b_in(7) and v_res_final(7));
 
-            when "0011" => -- SUBC
-                temp := ('0' & unsigned(a_in)) - ('0' & unsigned(b_in));
-                if c_in = '1' then
-                    temp := temp - 1;
-                end if;
-                res  := temp(7 downto 0);
-                flags_out(0) <= temp(8);
+            when "0011" => -- SUBC (Subtract with Carry/Borrow)
+                res_extended <= unsigned('0' & a_in) - unsigned('0' & b_in) - carry_in_ext;
+                h_arith      <= unsigned('0' & a_in(3 downto 0)) - unsigned('0' & b_in(3 downto 0)) - carry_in_ext(4 downto 0);
+                v_res_final  := std_logic_vector(res_extended(7 downto 0));
+                v_flags(0)   := res_extended(8);
+                v_flags(1)   := h_arith(4);
+                v_flags(3)   := (a_in(7) and (not b_in(7)) and (not v_res_final(7))) or 
+                                ((not a_in(7)) and b_in(7) and v_res_final(7));
 
-            -- =====================
-            -- LÓGICAS
-            -- =====================
+            -- ============================================================
+            -- OPERAÇÕES LÓGICAS (Flags de Carry/Overflow/Half zeradas)
+            -- ============================================================
+            when "0100" => v_res_final := a_in and b_in; -- AND
+            when "0101" => v_res_final := a_in or b_in;  -- OR
+            when "0110" => v_res_final := a_in xor b_in; -- XOR
+            when "0111" => v_res_final := b_in;          -- PASS B
+            when "1111" => v_res_final := not a_in;      -- NOT A
 
-            when "0100" => -- AND
-                res := unsigned(a_in and b_in);
-                flags_out(0) <= '0';
+            -- ============================================================
+            -- DESLOCAMENTOS E ROTAÇÕES
+            -- ============================================================
+            when "1000" => -- RLC (Rotate Left through Carry)
+                v_res_final := a_in(6 downto 0) & c_in;
+                v_flags(0)  := a_in(7);
+            when "1001" => -- RRC (Rotate Right through Carry)
+                v_res_final := c_in & a_in(7 downto 1);
+                v_flags(0)  := a_in(0);
+            when "1010" => -- RL (Rotate Left)
+                v_res_final := a_in(6 downto 0) & a_in(7);
+                v_flags(0)  := a_in(7);
+            when "1011" => -- RR (Rotate Right)
+                v_res_final := a_in(0) & a_in(7 downto 1);
+                v_flags(0)  := a_in(0);
+            when "1100" => -- SLL (Shift Left Logical)
+                v_res_final := a_in(6 downto 0) & '0';
+                v_flags(0)  := a_in(7);
+            when "1101" => -- SRL (Shift Right Logical)
+                v_res_final := '0' & a_in(7 downto 1);
+                v_flags(0)  := a_in(0);
+            when "1110" => -- SRA (Shift Right Arithmetic)
+                v_res_final := a_in(7) & a_in(7 downto 1);
+                v_flags(0)  := a_in(0);
 
-            when "0101" => -- OR
-                res := unsigned(a_in or b_in);
-                flags_out(0) <= '0';
-
-            when "0110" => -- XOR
-                res := unsigned(a_in xor b_in);
-                flags_out(0) <= '0';
-
-            when "0111" => -- PASS B
-                res := unsigned(b_in);
-                flags_out(0) <= '0';
-
-            -- =====================
-            -- SHIFT / ROTATE
-            -- =====================
-
-            when "1000" => -- RLC
-                res := unsigned(a_in(6 downto 0) & c_in);
-                flags_out(0) <= a_in(7);
-
-            when "1001" => -- RRC
-                res := unsigned(c_in & a_in(7 downto 1));
-                flags_out(0) <= a_in(0);
-
-            when "1010" => -- RL
-                res := unsigned(a_in(6 downto 0) & a_in(7));
-                flags_out(0) <= a_in(7);
-
-            when "1011" => -- RR
-                res := unsigned(a_in(0) & a_in(7 downto 1));
-                flags_out(0) <= a_in(0);
-
-            when "1100" => -- SLL
-                res := unsigned(a_in(6 downto 0) & '0');
-                flags_out(0) <= a_in(7);
-
-            when "1101" => -- SRL
-                res := unsigned('0' & a_in(7 downto 1));
-                flags_out(0) <= a_in(0);
-
-            when "1110" => -- SRA
-                res := unsigned(a_in(7) & a_in(7 downto 1));
-                flags_out(0) <= a_in(0);
-
-            -- =====================
-            -- OUTROS
-            -- =====================
-
-            when "1111" => -- NOT
-                res := unsigned(not a_in);
-                flags_out(0) <= '0';
-
-            when others =>
-                res := (others => '0');
-                flags_out(0) <= '0';
-
+            when others => v_res_final := (others => '0');
         end case;
 
-        -- RESULTADO
-        r_out <= std_logic_vector(res);
-
-        -- FLAGS
-
-        flags_out(4) <= res(7); -- Negativo
-
-        if res = 0 then
-            flags_out(2) <= '1'; -- Zero
-        else
-            flags_out(2) <= '0';
+        -- Atualização das Flags Universais (Z e N)
+        v_flags(4) := v_res_final(7); -- Negative (N)
+        if v_res_final = "00000000" then
+            v_flags(2) := '1';        -- Zero (Z)
         end if;
 
-        flags_out(3) <= '0'; -- Overflow (simplificado)
-        flags_out(1) <= '0'; -- Half carry
+        -- Atribuição final aos ports
+        res_final <= v_res_final;
+        r_out     <= v_res_final;
+        flags_out <= v_flags;
 
     end process;
-
 end behavior;
