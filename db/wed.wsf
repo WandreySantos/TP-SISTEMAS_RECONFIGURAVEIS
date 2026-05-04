@@ -24,10 +24,10 @@ VECTOR("C:/Users/wandr/OneDrive/Documentos/reconfiguraveis/ALU/db/MICROP.sim.cvw
 {
 	ZOOM{
 		ZBEGIN = 0;
-		ZEND = 124992;
+		ZEND = 124994;
 		NUMERATOR = 1513;
-		DENOMINATOR = 124992;
-		TOP_INDEX = 0;
+		DENOMINATOR = 124994;
+		TOP_INDEX = 9;
 	}
 	CLOCK{
 		PERIOD = 10000;
